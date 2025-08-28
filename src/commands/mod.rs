@@ -8,15 +8,15 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
                 .unwrap_or(0);
             std::process::exit(code);
         }
-        "echo" => super::commands::echo::run(args),
+        // "echo" => super::commands::echo::run(args),
         "cd"   => super::commands::cd::run(args),
         "pwd"  => super::commands::pwd::run(args),
-        "ls"   => super::commands::ls::run(args),
-        "cat"  => super::commands::cat::run(args),
-        "cp"   => super::commands::cp::run(args),
-        "rm"   => super::commands::rm::run(args),
-        "mv"   => super::commands::mv::run(args),
-        "mkdir"=> super::commands::mkdir::run(args),
+        // "ls"   => super::commands::ls::run(args),
+        // "cat"  => super::commands::cat::run(args),
+        // "cp"   => super::commands::cp::run(args),
+        // "rm"   => super::commands::rm::run(args),
+        // "mv"   => super::commands::mv::run(args),
+        // "mkdir"=> super::commands::mkdir::run(args),
         _ => Err(format!("Command '{}' not found", cmd)),
     }
 }

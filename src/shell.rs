@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::parser::split_args;
+use crate::parser::parse_command;
 use crate::commands;
 
 pub struct Shell;
@@ -38,7 +38,8 @@ impl Shell {
                 continue;
             }
 
-            let mut args = split_args(input);
+            // let mut args = split_args(input);
+            let mut args = parse_command(input);
             if args.is_empty() {
                 continue;
             }
