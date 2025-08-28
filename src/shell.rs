@@ -38,13 +38,13 @@ impl Shell {
                 continue;
             }
 
-            // let mut args = split_args(input);
-            let mut args = parse_command(input);
-            if args.is_empty() {
+            // Use parser
+            let (cmd, args) = parse_command(input);
+            if cmd.is_empty() {
                 continue;
             }
 
-            let cmd = args.remove(0);
+            // Dispatch command
             let res = commands::dispatch(&cmd, &args);
 
             if let Err(msg) = res {

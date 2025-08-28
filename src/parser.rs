@@ -1,10 +1,3 @@
-// pub fn parse_command(input: &str) -> (String, Vec<String>) {
-//     let mut parts = input.split_whitespace();
-//     let cmd = parts.next().unwrap_or("").to_string();
-//     let args: Vec<String> = parts.map(|s| s.to_string()).collect();
-//     (cmd, args)
-// }
-
 pub fn parse_command(input: &str) -> (String, Vec<String>) {
     let mut args = Vec::new();
     let mut current = String::new();
@@ -18,7 +11,7 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
                 chars.next();
             }
             '#' if !in_quotes => {
-                break;
+                break; // treat '#' as comment starter
             }
             ' ' | '\t' if !in_quotes => {
                 if !current.is_empty() {
