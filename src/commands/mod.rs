@@ -12,8 +12,8 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
             std::process::exit(code);
         }
         // "echo" => echo::run(args),
-        // "cd"   => cd::run(args),
-        // "pwd"  => pwd::run(args),
+        "cd"   => cd::run(args),
+        "pwd"  => pwd::run(args),
         // "ls"   => ls::run(args),
         // "cat"  => cat::run(args),
         // "cp"   => cp::run(args),

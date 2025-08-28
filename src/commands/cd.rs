@@ -1,6 +1,6 @@
 use std::env;
 
-pub fn run(args: &[String]) {
+pub fn run(args: &[String]) -> Result<(), String> {
     let target = if args.is_empty() {
         env::var("HOME").unwrap_or_else(|_| "/".to_string())
     } else {
@@ -8,8 +8,8 @@ pub fn run(args: &[String]) {
     };
 
     if let Err(e) = env::set_current_dir(&target) {
-        eprintln!("cd: {}: {}", target, e);
+        return Err(format!("cd: {}: {}", target, e));
     }
+
+    Ok(())
 }
-
-
