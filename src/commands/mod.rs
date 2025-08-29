@@ -18,7 +18,7 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
         // "cp"   => cp::run(args),
         // "rm"   => rm::run(args),
         // "mv"   => mv::run(args),
-        "mkdir" => commands::mkdir::mkdir(&args[1..]),
+        "mkdir" => mkdir::mkdir(&args),
         // "clear"=> clear::run(args),
 
 

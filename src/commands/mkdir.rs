@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 pub fn mkdir(args: &[String]) -> Result<(), String> {
+    println!("{:?}", args);
     if args.is_empty() {
         return Err("mkdir: missing operand".into());
     }
