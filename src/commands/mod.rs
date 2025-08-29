@@ -18,6 +18,7 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
         // "rm"   => rm::run(args),
         // "mv"   => mv::run(args),
         // "mkdir"=> mkdir::run(args),
+        // "clear"=> clear::run(args),
 
 
         // "echo" => super::commands::echo::run(args),
