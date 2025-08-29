@@ -3,6 +3,7 @@ pub mod pwd;
 pub mod ls;
 pub mod echo;
 pub mod exit;
+pub mod mkdir;
 
 pub type CmdResult = Result<(), String>;
 
@@ -17,7 +18,7 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
         // "cp"   => cp::run(args),
         // "rm"   => rm::run(args),
         // "mv"   => mv::run(args),
-        // "mkdir"=> mkdir::run(args),
+        "mkdir" => commands::mkdir::mkdir(&args[1..]),
         // "clear"=> clear::run(args),
 
 
