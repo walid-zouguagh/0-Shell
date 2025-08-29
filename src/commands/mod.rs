@@ -5,6 +5,7 @@ pub mod echo;
 pub mod exit;
 pub mod mkdir;
 pub mod cat;
+pub mod cp;
 
 pub type CmdResult = Result<(), String>;
 
@@ -16,7 +17,7 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
         "pwd"  => pwd::run(args),
         "ls"   => ls::run(args),
         "cat"  => cat::cat(args),
-        // "cp"   => cp::run(args),
+        "cp"   => cp::cp(args),
         // "rm"   => rm::run(args),
         // "mv"   => mv::run(args),
         "mkdir" => mkdir::mkdir(&args),
