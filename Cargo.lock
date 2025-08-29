@@ -3,8 +3,6 @@
 version = 4
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -292,7 +290,6 @@ dependencies = [
 ]
 
 [[package]]
->>>>>>> origin/alaidi
 name = "zero_shell"
 version = "0.1.0"
 dependencies = [
