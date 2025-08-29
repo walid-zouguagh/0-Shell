@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::io;
 
-/// Recursively copies a directory
+ 
 fn copy_dir_recursively(src: &Path, dst: &Path) -> io::Result<()> {
     if !dst.exists() {
         fs::create_dir_all(dst)?;
@@ -30,7 +30,7 @@ pub fn cp(args: &[String]) -> Result<(), String> {
     let mut recursive = false;
     let mut paths: Vec<String> = Vec::new();
 
-    // Handle flags (only -r for now)
+   
     for arg in args {
         if arg == "-r" || arg == "-R" {
             recursive = true;
