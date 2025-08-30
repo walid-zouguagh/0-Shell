@@ -8,6 +8,7 @@ pub mod cat;
 pub mod cp;
 pub mod mv;
 pub mod rm;
+pub mod clear;
 
 pub type CmdResult = Result<(), String>;
 
@@ -23,7 +24,7 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
         "rm"   => rm::rm(args),
         "mv"   => mv::mv(args),
         "mkdir" => mkdir::mkdir(&args),
-        // "clear"=> clear::run(args),
+        "clear"=> clear::clear(args),
         _ => Err(format!("Command '{}' not found", cmd)),
     }
 }
