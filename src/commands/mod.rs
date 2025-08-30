@@ -24,7 +24,7 @@ pub fn dispatch(cmd: &str, args: &[String]) -> CmdResult {
         "rm"   => rm::rm(args),
         "mv"   => mv::mv(args),
         "mkdir" => mkdir::mkdir(&args),
-        "clear"=> clear::clear(args),
+        "clear" => clear::clear(args),
         _ => Err(format!("Command '{}' not found", cmd)),
     }
 }
