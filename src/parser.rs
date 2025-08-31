@@ -1,33 +1,36 @@
 pub fn parse_command(input: &str) -> (String, Vec<String>) {
     let mut args = Vec::new();
     let mut current = String::new();
-    let mut in_quotes = false;
-    let mut its_a_quote = false;
+    let mut in_single_quotes = false;
+    let mut in_double_quotes = false;
+    let mut escaped = false;
     let mut chars = input.trim().chars().peekable();
 
     while let Some(ch) = chars.next() {
+        if escaped {
+            current.push(ch);
+            escaped = false;
+            continue;
+        }
+
         match ch {
-            ' ' if !in_quotes && ! its_a_quote => {
+            ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
                 if !current.is_empty(){
                     args.push(current.clone());
                     current.clear();
                 }
             }
-            '#' if !in_quotes => {
-                break; // treat '#' as comment starter
+            '#' if !in_single_quotes && !in_double_quotes => {
+                break;
             }
-            '\"' if !in_quotes => {
-                in_quotes =  !in_quotes
+            '"' if !in_single_quotes => {
+                in_double_quotes = !in_double_quotes
             }
-            '\'' => {
-                its_a_quote = !its_a_quote
+            '\'' if !in_double_quotes => {
+                in_single_quotes = !in_single_quotes
             }
             '\\' => {
-                if let Some(next_character) = chars.next(){
-                    current.push(next_character)
-                }else {
-                    current.push(ch)
-                }
+               escaped = true
             }
             _ => {
                 current.push(ch);
@@ -35,7 +38,13 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
             }
         }
     }
+     if in_single_quotes || in_double_quotes {
+        return (" error: help : close the damn quote please".to_string(), vec![]);
+    }
 
+    if escaped {
+        current.push('\\');
+    }
     if !current.is_empty() {
         args.push(current);
     }
