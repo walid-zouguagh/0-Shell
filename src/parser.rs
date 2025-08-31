@@ -2,27 +2,36 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
     let mut args = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
-    let mut chars = input.chars().peekable();
+    let mut its_a_quote = false;
+    let mut chars = input.trim().chars().peekable();
 
-    while let Some(&ch) = chars.peek() {
+    while let Some(ch) = chars.next() {
         match ch {
-            '"' => {
-                in_quotes = !in_quotes;
-                chars.next();
+            ' ' if !in_quotes && ! its_a_quote => {
+                if !current.is_empty(){
+                    args.push(current.clone());
+                    current.clear();
+                }
             }
             '#' if !in_quotes => {
                 break; // treat '#' as comment starter
             }
-            ' ' | '\t' if !in_quotes => {
-                if !current.is_empty() {
-                    args.push(current.clone());
-                    current.clear();
+            '\"' if !in_quotes => {
+                in_quotes =  !in_quotes
+            }
+            '\'' => {
+                its_a_quote = !its_a_quote
+            }
+            '\\' => {
+                if let Some(next_character) = chars.next(){
+                    current.push(next_character)
+                }else {
+                    current.push(ch)
                 }
-                chars.next();
             }
             _ => {
                 current.push(ch);
-                chars.next();
+                // chars.next();
             }
         }
     }
