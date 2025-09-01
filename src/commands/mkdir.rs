@@ -13,5 +13,6 @@ pub fn mkdir(args: &[String]) -> Result<(), String> {
             println!("mkdir: cannot create directory '{}': {}", dir, e);
         }
     }
+    
     Ok(())
 }

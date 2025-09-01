@@ -1,10 +1,24 @@
-pub fn parse_command(input: &str) -> (String, Vec<String>) {
+use std::io::{ self, Write };
+pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     let mut args = Vec::new();
     let mut current = String::new();
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
     let mut escaped = false;
-    let mut chars = input.trim().chars().peekable();
+    let mut input = initial_input.trim().to_string();
+    while !is_command_complete(&input) {
+        print!("> "); // continuation prompt
+        io::stdout().flush().unwrap();
+        
+        let mut extra = String::new();
+        if io::stdin().read_line(&mut extra).unwrap() == 0 {
+            break; // EOF
+        }
+        input.push('\n');
+        input.push_str(extra.trim_end());
+    }
+    
+    let mut chars = input.chars().peekable();
 
     while let Some(ch) = chars.next() {
         if escaped {
@@ -49,6 +63,8 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
                     current.push('\\');
                 } else {
                     // In double quotes or unquoted: check next char for escape
+                        // escaped = true; 
+
                     if let Some(&next_ch) = chars.peek() {
                         match next_ch {
                             'n' => {
@@ -81,10 +97,7 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
             }
         }
     }
-    // this condition here is to chech if our arg or command is between quotes else if its gonna return an err
-    if in_single_quotes || in_double_quotes {
-        return (" error: help : close the damn quote please".to_string(), vec![]);
-    }
+ 
     // in this case  the last char is a backslash we should add it to the current arg
     if escaped {
         current.push('\\');
@@ -101,4 +114,26 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
     // here we remove the first element of the args and return it as the command
     let cmd = args.remove(0);
     (cmd, args)
+}
+
+
+fn is_command_complete(input: &str) -> bool {
+    let mut in_single_quotes = false;
+    let mut in_double_quotes = false;
+    let mut escaped = false;
+
+    for ch in input.chars() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' => escaped = true,
+            '\'' if !in_double_quotes => in_single_quotes = !in_single_quotes,
+            '"' if !in_single_quotes => in_double_quotes = !in_double_quotes,
+            _ => {}
+        }
+    }
+
+    !in_single_quotes && !in_double_quotes && !input.trim_end().ends_with('\\')
 }
