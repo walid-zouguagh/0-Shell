@@ -43,7 +43,7 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
                 in_single_quotes = !in_single_quotes;
             }
             // in case of a backslash we set the escaped flag to true so that the next char is added as it is
-            '\\' =>  {
+            '\\' => {
                 if !in_single_quotes {
                     // Inside single quotes: literal backslash
                     current.push('\\');
@@ -60,8 +60,8 @@ pub fn parse_command(input: &str) -> (String, Vec<String>) {
                                 current.push('\t');
                             }
                             _ => {
-                                // No special escape, just add the backslash and the next char normally
-                                // current.push('\\');
+                                //  No special escape, just add the backslash and the next char normally
+                                //  current.push('\\');
                                 continue;
                             }
                         }

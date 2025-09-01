@@ -2,10 +2,11 @@ use std::fs;
 use std::path::Path;
 
 pub fn mv(args: &[String]) -> Result<(), String> {
+    // first of all we should xeeck the les argumments 
     if args.len() < 2 {
         return Err("mv: missing file operands".into());
     }
-
+    // daba adii nfar9o bin l file that is goona be copied and fiin ghadi ncopyiwh
     let sources = &args[..args.len() - 1];
     let dest = Path::new(&args[args.len() - 1]);
 
@@ -16,12 +17,13 @@ pub fn mv(args: &[String]) -> Result<(), String> {
     }
 
     for src in sources {
+        // here we check l file washe kayeen
         let src_path = Path::new(src);
         if !src_path.exists() {
             println!("mv: cannot stat '{}': No such file or directory", src);
             continue;
         }
-
+        
         let mut dest_path = dest.to_path_buf();
         if dest.is_dir() {
             if let Some(file_name) = src_path.file_name() {
