@@ -22,7 +22,6 @@ impl Shell {
             let mut input = String::new();
             match stdin.read_line(&mut input) {
                 Ok(0) => {
-                    // EOF (Ctrl+D)
                     println!();
                     break;
                 }

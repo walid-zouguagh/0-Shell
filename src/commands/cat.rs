@@ -1,11 +1,20 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{self,BufRead, BufReader};
 use std::path::Path;
 
 pub fn cat(args: &[String]) -> Result<(), String> {
-
+//  in case no args were provided with the cmd cat we just read from stdin 
+// not that stdin is just a file desctiptor li kaylisni 3la input dyaal terminal !!!!
     if args.is_empty() {
-        return Err("cat: missing file operand".into());
+         let stdin = io::stdin();
+        let reader = stdin.lock();
+        for line in reader.lines() {
+            match line {
+                Ok(content) => println!("{}", content),
+                Err(e) => eprintln!("cat: error reading stdin: {}", e),
+            }
+        }
+        return Ok(());
     }
 
     for filename in args {
