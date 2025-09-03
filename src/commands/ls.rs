@@ -1,8 +1,9 @@
 use chrono::{DateTime, Local};
+use libc::{major, minor};
 use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::os::unix::fs::{FileTypeExt, MetadataExt}; // for permissions, size, owner, group, etc
+use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::time::SystemTime;
 
 pub fn run(args: &[String]) -> Result<(), String> {
@@ -51,59 +52,6 @@ pub fn run(args: &[String]) -> Result<(), String> {
             continue; // Skip to the next path
         }
 
-        // //================== Start
-        // // If it's a directory, list its contents
-        // if path.is_dir() {
-        //     let entries: Vec<_> = fs::read_dir(&path)
-        //         .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?
-        //         .collect::<Result<Vec<_>, _>>()
-        //         .map_err(|e| format!("ls: error reading dir: {}", e))?;
-
-        //     if long_format {
-        //         print_long_format(&entries, show_all, &path, append_types)?;
-        //     } else {
-        //         print_short_format(&entries, show_all, append_types)?;
-        //     }
-        // } else {
-        //     // Handle case where path is a file, not a directory
-        //     // if long_format {
-        //     //     let metadata = fs::metadata(&path)
-        //     //         .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?;
-        //     //     let file_name = path
-        //     //         .file_name()
-        //     //         .unwrap_or_else(|| std::ffi::OsStr::new(""))
-        //     //         .to_string_lossy() // Cow<str>
-        //     //         .to_string(); // String
-        //     //     print_long_entry(&metadata, &file_name, append_types)?;
-        //     // } else {
-        //     //     let mut file_name = path.display().to_string();
-        //     //     if append_types {
-        //     //         file_name = append_type_suffix_for_path(&path, file_name)?;
-        //     //     }
-        //     //     println!("{}", file_name);
-        //     // }
-
-        //     // Handle case where path is a file, not a directory
-        //     if long_format {
-        //         // FIX: use symlink_metadata so we don't follow symlinks like /bin -> /usr/bin
-        //         let metadata = fs::symlink_metadata(&path)
-        //             .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?;
-        //         let file_name = path
-        //             .file_name()
-        //             .unwrap_or_else(|| std::ffi::OsStr::new(""))
-        //             .to_string_lossy()
-        //             .to_string();
-        //         print_long_entry(&metadata, &file_name, append_types)?;
-        //     } else {
-        //         let mut file_name = path.display().to_string();
-        //         if append_types {
-        //             file_name = append_type_suffix_for_path(&path, file_name)?;
-        //         }
-        //         println!("{}", file_name);
-        //     }
-        // }
-        // //================== End
-
         // Use symlink_metadata to decide what the path really is
         let meta = fs::symlink_metadata(&path)
             .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?;
@@ -128,7 +76,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     .unwrap_or_else(|| std::ffi::OsStr::new(""))
                     .to_string_lossy()
                     .to_string();
-                print_long_entry(&meta, &file_name, append_types)?;
+                print_long_entry(&meta, &file_name, append_types, None)?;
             } else {
                 let mut file_name = path.display().to_string();
                 if append_types {
@@ -212,7 +160,7 @@ fn print_short_format(
     Ok(())
 }
 
-// Print the details for each file in long format (-l)
+// Modified print_long_format to pass the directory path
 fn print_long_format(
     entries: &[fs::DirEntry],
     show_all: bool,
@@ -226,11 +174,11 @@ fn print_long_format(
     if show_all {
         if let Ok(meta) = fs::symlink_metadata(path) {
             total_blocks += meta.blocks();
-            display_entries.push((meta, "./".to_string()));
+            display_entries.push((meta, ".".to_string()));
         }
         if let Ok(meta) = fs::symlink_metadata(path.join("..")) {
             total_blocks += meta.blocks();
-            display_entries.push((meta, "../".to_string()));
+            display_entries.push((meta, "..".to_string()));
         }
     }
 
@@ -277,40 +225,54 @@ fn print_long_format(
 
     // Print detailed info for all entries
     for (metadata, file_name) in display_entries {
-        print_long_entry(&metadata, &file_name, append_types)?;
+        // Pass the directory path so we can construct correct full paths
+        print_long_entry(&metadata, &file_name, append_types, Some(path))?;
     }
 
     Ok(())
 }
 
-// Print detailed info for one file (used in -l)
+// Modified print_long_entry function - pass the directory path
 fn print_long_entry(
     metadata: &fs::Metadata,
     file_name: &str,
-    _append_types: bool,
+    append_types: bool,
+    base_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
-    let perms = format_mode(metadata.mode(), metadata.is_dir());
-    let size = metadata.size();
-    let links = metadata.nlink(); // Number of hard links
+    use std::os::unix::fs::MetadataExt;
+
+    let ftype = file_type_char(metadata.mode());
+    let perms = format_mode(metadata.mode());
+    let links = metadata.nlink();
     let owner = get_owner(metadata.uid()).unwrap_or_else(|_| String::from("unknown"));
     let group = get_group(metadata.gid()).unwrap_or_else(|_| String::from("unknown"));
 
     let mtime = metadata.modified().unwrap_or(SystemTime::now());
     let datetime: DateTime<Local> = mtime.into();
-
-    // Format like `Aug 30 12:00`
     let mtime_str = datetime.format("%b %e %H:%M").to_string();
 
-    // Print all information in long format
+    // Handle device files
+    let file_type = metadata.mode() & libc::S_IFMT;
+    let size_or_dev = if file_type == libc::S_IFCHR || file_type == libc::S_IFBLK {
+        let rdev = metadata.rdev();
+        format!("{}, {}", major(rdev), minor(rdev))
+    } else {
+        format!("{}", metadata.size())
+    };
+
+    let mut display_name = file_name.to_string();
+    if append_types {
+        let full_path = if let Some(base) = base_path {
+            base.join(file_name)
+        } else {
+            std::path::PathBuf::from(file_name)
+        };
+        display_name = append_type_suffix_for_path(&full_path, display_name)?;
+    }
+
     println!(
-        "{} {:>3} {:>8} {:>8} {:>8} {} {}",
-        perms,
-        links,     // Hard links count
-        owner,     // Owner
-        group,     // Group
-        size,      // Size
-        mtime_str, // Last modified
-        file_name  // Filename with suffix
+        "{}{} {:>3} {:>8} {:>8} {:>8} {} {}",
+        ftype, perms, links, owner, group, size_or_dev, mtime_str, display_name
     );
 
     Ok(())
@@ -345,17 +307,28 @@ fn append_type_suffix_for_path(
     path: &std::path::Path,
     file_name: String,
 ) -> Result<String, String> {
-    let metadata = fs::metadata(path).map_err(|e| format!("Error getting metadata: {}", e))?;
+    // Use symlink_metadata to avoid following symlinks
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(meta) => meta,
+        Err(_) => {
+            // If we can't get metadata, return the original filename without modification
+            return Ok(file_name);
+        }
+    };
 
     let mut file_name_str = file_name;
 
     if metadata.is_dir() {
         file_name_str.push('/');
+    } else if metadata.file_type().is_symlink() {
+        file_name_str.push('@');
+    } else if metadata.file_type().is_fifo() {
+        file_name_str.push('|');
+    } else if metadata.file_type().is_socket() {
+        file_name_str.push('=');
     } else if metadata.is_file() && metadata.permissions().mode() & 0o111 != 0 {
         file_name_str.push('*');
     }
-    // Note: For symlinks and other special files, we'd need to use fs::symlink_metadata()
-    // and handle them appropriately, but this covers the basic cases
 
     Ok(file_name_str)
 }
@@ -367,23 +340,10 @@ fn is_executable(entry: &fs::DirEntry) -> Result<bool, String> {
         .map_err(|e| format!("Error getting metadata: {}", e))?;
 
     Ok(metadata.permissions().mode() & 0o111 != 0)
-
-    // In short:
-    // metadata.permissions().mode() & 0o111 != 0 : checks if a file is executable by anyone.
-
-    // metadata.permissions().mode() - Gets the file's permission bits
-    // & 0o111 - Isolates only the 3 execute bits (owner, group, others)
-    // != 0 - Returns true if ANY execute bit is set, false if none
-
-    // Purpose: Used by ls -F to decide whether to add an asterisk (*) to executable files.
 }
 
-// Convert mode bits into string like `-rw-r--r--` or `drwxr-xr-x`
-fn format_mode(mode: u32, is_dir: bool) -> String {
-    let file_type = if is_dir { 'd' } else { '-' };
-
+fn format_mode(mode: u32) -> String {
     let mut perms = String::new();
-    perms.push(file_type);
 
     let modes = [
         (0o400, 'r'),
@@ -424,7 +384,6 @@ fn get_owner(uid: u32) -> Result<String, String> {
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     if let Some(name) = output_str.split(':').next() {
-        // forexample Input: "walid:x:1000:1000:Walid:/home/walid:/bin/bash" => split(':').next() → "walid".
         Ok(name.to_string())
     } else {
         Ok(uid.to_string())
@@ -450,5 +409,18 @@ fn get_group(gid: u32) -> Result<String, String> {
         Ok(name.to_string())
     } else {
         Ok(gid.to_string())
+    }
+}
+
+fn file_type_char(mode: u32) -> char {
+    match mode & libc::S_IFMT {
+        libc::S_IFDIR => 'd',  // directory
+        libc::S_IFCHR => 'c',  // character device
+        libc::S_IFBLK => 'b',  // block device
+        libc::S_IFLNK => 'l',  // symlink
+        libc::S_IFIFO => 'p',  // named pipe (FIFO)
+        libc::S_IFSOCK => 's', // socket
+        libc::S_IFREG => '-',  // regular file
+        _ => '?',              // unknown
     }
 }
