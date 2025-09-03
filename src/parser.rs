@@ -51,13 +51,9 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                 break;
             }
             // in case of a double quote we should check if we are not in single quotes then change the state of in_double_quotes
-            '"' if !in_single_quotes => {
-                in_double_quotes = !in_double_quotes;
-            }
+            '"' if !in_single_quotes => {in_double_quotes = !in_double_quotes}
             // here we do the same for single quotes
-            '\'' if !in_double_quotes => {
-                in_single_quotes = !in_single_quotes;
-            }
+            '\'' if !in_double_quotes => {in_single_quotes = !in_single_quotes;}
             // in case of a backslash we set the escaped flag to true so that the next char is added as it is
             '\\' => {
                 if !in_single_quotes {
@@ -89,20 +85,14 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                                 chars.next();
                                 current.push('\\');
                             }
-                            '"' if in_double_quotes => {
-                                chars.next();
-                                current.push('"');
-                            } 
-                            '\'' if !in_double_quotes => {
-                                chars.next();
-                                current.push('\'');
-                            }
+                            '"' if in_double_quotes => {chars.next();current.push('"');} 
+                            '\'' if !in_double_quotes => {chars.next();current.push('\''); }
                             // ' ' 
-                            _ => {
+                            _ => { current.push('\\'); continue;
                                 //  No special escape, just add the backslash and the next char normally
-                                 current.push('\\');
+                                 
                                 // escaped =  true;
-                                continue;
+                               
                             }
                         }
                     } else {
@@ -112,14 +102,7 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                     }
                 }
             }
-            //  '\n'  =>  {
-            //     if !in_single_quotes || !in_double_quotes {
-            //         current.push('\n');
-            //     } else{
-            //         current.push(' ');
-                    
-            //     }
-            //  }
+        
             // the default state is to push the character to l arrg
             _ => {
                 current.push(ch);
@@ -168,3 +151,5 @@ fn is_command_complete(input: &str) -> bool {
 
     !in_single_quotes && !in_double_quotes && !input.trim_end().ends_with('\\')
 }
+
+ 
