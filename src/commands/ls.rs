@@ -51,8 +51,65 @@ pub fn run(args: &[String]) -> Result<(), String> {
             continue; // Skip to the next path
         }
 
-        // If it's a directory, list its contents
-        if path.is_dir() {
+        // //================== Start
+        // // If it's a directory, list its contents
+        // if path.is_dir() {
+        //     let entries: Vec<_> = fs::read_dir(&path)
+        //         .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?
+        //         .collect::<Result<Vec<_>, _>>()
+        //         .map_err(|e| format!("ls: error reading dir: {}", e))?;
+
+        //     if long_format {
+        //         print_long_format(&entries, show_all, &path, append_types)?;
+        //     } else {
+        //         print_short_format(&entries, show_all, append_types)?;
+        //     }
+        // } else {
+        //     // Handle case where path is a file, not a directory
+        //     // if long_format {
+        //     //     let metadata = fs::metadata(&path)
+        //     //         .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?;
+        //     //     let file_name = path
+        //     //         .file_name()
+        //     //         .unwrap_or_else(|| std::ffi::OsStr::new(""))
+        //     //         .to_string_lossy() // Cow<str>
+        //     //         .to_string(); // String
+        //     //     print_long_entry(&metadata, &file_name, append_types)?;
+        //     // } else {
+        //     //     let mut file_name = path.display().to_string();
+        //     //     if append_types {
+        //     //         file_name = append_type_suffix_for_path(&path, file_name)?;
+        //     //     }
+        //     //     println!("{}", file_name);
+        //     // }
+
+        //     // Handle case where path is a file, not a directory
+        //     if long_format {
+        //         // FIX: use symlink_metadata so we don't follow symlinks like /bin -> /usr/bin
+        //         let metadata = fs::symlink_metadata(&path)
+        //             .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?;
+        //         let file_name = path
+        //             .file_name()
+        //             .unwrap_or_else(|| std::ffi::OsStr::new(""))
+        //             .to_string_lossy()
+        //             .to_string();
+        //         print_long_entry(&metadata, &file_name, append_types)?;
+        //     } else {
+        //         let mut file_name = path.display().to_string();
+        //         if append_types {
+        //             file_name = append_type_suffix_for_path(&path, file_name)?;
+        //         }
+        //         println!("{}", file_name);
+        //     }
+        // }
+        // //================== End
+
+        // Use symlink_metadata to decide what the path really is
+        let meta = fs::symlink_metadata(&path)
+            .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?;
+
+        if meta.is_dir() && !meta.file_type().is_symlink() {
+            // Real directory (not a symlink to one)
             let entries: Vec<_> = fs::read_dir(&path)
                 .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?
                 .collect::<Result<Vec<_>, _>>()
@@ -64,16 +121,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 print_short_format(&entries, show_all, append_types)?;
             }
         } else {
-            // Handle case where path is a file, not a directory
+            // File or symlink (including /bin -> usr/bin)
             if long_format {
-                let metadata = fs::metadata(&path)
-                    .map_err(|e| format!("ls: cannot access '{}': {}", path.display(), e))?;
                 let file_name = path
                     .file_name()
                     .unwrap_or_else(|| std::ffi::OsStr::new(""))
-                    .to_string_lossy() // Cow<str>
-                    .to_string(); // String
-                print_long_entry(&metadata, &file_name, append_types)?;
+                    .to_string_lossy()
+                    .to_string();
+                print_long_entry(&meta, &file_name, append_types)?;
             } else {
                 let mut file_name = path.display().to_string();
                 if append_types {
@@ -169,13 +224,13 @@ fn print_long_format(
 
     // Add . and .. if -a flag is set
     if show_all {
-        if let Ok(meta) = fs::metadata(path) {
+        if let Ok(meta) = fs::symlink_metadata(path) {
             total_blocks += meta.blocks();
-            display_entries.push((meta, ".".to_string()));
+            display_entries.push((meta, "./".to_string()));
         }
         if let Ok(meta) = fs::symlink_metadata(path.join("..")) {
             total_blocks += meta.blocks();
-            display_entries.push((meta, "..".to_string()));
+            display_entries.push((meta, "../".to_string()));
         }
     }
 
