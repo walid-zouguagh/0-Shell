@@ -32,20 +32,22 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                 if current.is_empty() {
                     if let Ok(home) = std::env::var("HOME") {
                         current.push_str(&home);
-                        continue;
+                        // continue;
+                    }else {
+                        current.push('~');
                     }
                 }
-                current.push('~');
             }
-            ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
+            ' ' | '\t' if !in_single_quotes && !in_double_quotes  => {
                 // in this we
                 if !current.is_empty() {
                     args.push(current.clone());
                     current.clear();
                 }
+             
             }
             // in case the arg starts with a # and is not in quotes we egnore the rest of the line
-            '#' if !in_single_quotes && !in_double_quotes => {
+            '#' if !in_single_quotes && !in_double_quotes && current.is_empty() => {
                 break;
             }
             // in case of a double quote we should check if we are not in single quotes then change the state of in_double_quotes
@@ -60,8 +62,12 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
             '\\' => {
                 if !in_single_quotes {
                     // Inside single quotes: literal backslash
-                    current.push('\\');
+                    // current.push('\\');
+                    // println!("here1111111111111111111");
+                    continue;
                 } else {
+                    // println!("here2222222222222222222");
+
                     // In double quotes or unquoted: check next char for escape
                         // escaped = true; 
 
@@ -75,22 +81,46 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                                 chars.next();
                                 current.push('\t');
                             }
+                            'r' => {
+                                chars.next();
+                                current.push('\r');
+                            }
+                            '\\' => {
+                                chars.next();
+                                current.push('\\');
+                            }
+                            '"' if in_double_quotes => {
+                                chars.next();
+                                current.push('"');
+                            } 
+                            '\'' if !in_double_quotes => {
+                                chars.next();
+                                current.push('\'');
+                            }
+                            // ' ' 
                             _ => {
                                 //  No special escape, just add the backslash and the next char normally
-                                //  current.push('\\');
+                                 current.push('\\');
+                                // escaped =  true;
                                 continue;
                             }
                         }
                     } else {
+                        // println!("here33333333333333333");
                         // Backslash at the end: treat as literal
                         current.push('\\');
                     }
                 }
             }
-            // '\n'  =>  {
-            //     current.push(' ');
-            // }
-            // the default state is to push the character the the arrg
+            //  '\n'  =>  {
+            //     if !in_single_quotes || !in_double_quotes {
+            //         current.push('\n');
+            //     } else{
+            //         current.push(' ');
+                    
+            //     }
+            //  }
+            // the default state is to push the character to l arrg
             _ => {
                 current.push(ch);
                 // chars.next();
@@ -99,9 +129,10 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     }
  
     // in this case  the last char is a backslash we should add it to the current arg
-    if escaped {
-        current.push('\\');
-    }
+    // if escaped {
+    //     println!("here44444444444444444");
+    //     current.push('\\');
+    // }
 
     if !current.is_empty() {
         args.push(current);

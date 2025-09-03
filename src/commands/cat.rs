@@ -1,7 +1,6 @@
 use std::fs::File;
-use std::io::{ self, BufRead, BufReader };
+use std::io::{ self, BufRead, BufReader, Read };
 use std::path::Path;
-
 pub fn cat(args: &[String]) -> Result<(), String> {
     //  in case no args were provided with the cmd cat we just read from stdin
     // note that stdin is just a file desctiptor li kaylisni 3la l input dyaal terminal !!!!
@@ -40,17 +39,15 @@ pub fn cat(args: &[String]) -> Result<(), String> {
                     continue;
                 }
             };
-            // here i shoooose to use BufReader over reading directly from file so can read it line by line !!!
-            let reader = BufReader::new(file);
-            // here i'm sure that the file exists so we can read it line by line
-
-            for line in reader.lines() {
-                match line {
-                    Ok(content) => println!("{}", content),
-                    Err(e) => println!("cat: error reading {}: {}", filename, e),
-                }
-                //  here i'm stillll chcking for errs  while reading the the file content, because each line is treated separately and return its own result
+            let  mut readdder = BufReader::new(file);
+            let mut bufffer = Vec::new();
+            if let  Err(e) = readdder.read_to_end(&mut bufffer){
+                eprint!("cat: error reading file '{}': {}", filename, e);
+                continue;
             }
+            let content = String::from_utf8_lossy(&bufffer);
+            println!("{}", content);
+          
         }
     }
     Ok(())
