@@ -1,11 +1,12 @@
-use chrono::Datelike;
-use chrono::{DateTime, Local};
+// use chrono::Datelike;
+use chrono::{DateTime, Datelike, Local};
 use libc::{major, minor};
 use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::time::SystemTime;
+use term_size;
 
 pub fn run(args: &[String]) -> Result<(), String> {
     // Flags
@@ -103,26 +104,91 @@ pub fn run(args: &[String]) -> Result<(), String> {
 }
 
 // Print files in short format (default)
+// fn print_short_format(
+//     entries: &[fs::DirEntry],
+//     show_all: bool,
+//     append_types: bool,
+// ) -> Result<(), String> {
+//     // Create a list of all entries to display
+//     let mut display_entries = Vec::new();
+
+//     // Add . and .. if -a flag is set (these will be sorted with everything else)
+//     if show_all {
+//         display_entries.push(".".to_string());
+//         display_entries.push("..".to_string());
+//     }
+
+//     // Add regular entries
+//     for entry in entries {
+//         let file_name = entry.file_name();
+//         let file_name_str = file_name.to_string_lossy();
+
+//         // Skip hidden files unless -a is given
+//         if !show_all && file_name_str.starts_with('.') {
+//             continue;
+//         }
+
+//         let file_name_str = if append_types {
+//             append_type_suffix(entry, file_name_str.to_string())?
+//         } else {
+//             file_name_str.into_owned()
+//         };
+
+//         display_entries.push(file_name_str);
+//     }
+
+//     // Sort all entries together using ls-like sorting:
+//     // 1. . comes first
+//     // 2. .. comes second
+//     // 3. Everything else sorted case-insensitively, ignoring leading dots for sort order
+//     display_entries.sort_by(|a, b| {
+//         match (a.as_str(), b.as_str()) {
+//             (".", _) => std::cmp::Ordering::Less,
+//             (_, ".") => std::cmp::Ordering::Greater,
+//             ("..", _) if b != "." => std::cmp::Ordering::Less,
+//             (_, "..") if a != "." => std::cmp::Ordering::Greater,
+//             _ => {
+//                 // For other files, sort by name ignoring leading dots and case
+//                 let key_a = a.trim_start_matches('.').to_lowercase();
+//                 let key_b = b.trim_start_matches('.').to_lowercase();
+//                 key_a.cmp(&key_b)
+//             }
+//         }
+//     });
+
+//     // Print all entries
+//     let mut first = true;
+//     for entry in display_entries {
+//         if !first {
+//             print!("   ");
+//         }
+//         print!("{}", entry);
+//         first = false;
+//     }
+
+//     if !first {
+//         println!(); // Add final newline only if we printed something
+//     }
+
+//     Ok(())
+// }
+
 fn print_short_format(
     entries: &[fs::DirEntry],
     show_all: bool,
     append_types: bool,
 ) -> Result<(), String> {
-    // Create a list of all entries to display
     let mut display_entries = Vec::new();
 
-    // Add . and .. if -a flag is set (these will be sorted with everything else)
     if show_all {
         display_entries.push(".".to_string());
         display_entries.push("..".to_string());
     }
 
-    // Add regular entries
     for entry in entries {
         let file_name = entry.file_name();
         let file_name_str = file_name.to_string_lossy();
 
-        // Skip hidden files unless -a is given
         if !show_all && file_name_str.starts_with('.') {
             continue;
         }
@@ -136,37 +202,37 @@ fn print_short_format(
         display_entries.push(file_name_str);
     }
 
-    // Sort all entries together using ls-like sorting:
-    // 1. . comes first
-    // 2. .. comes second
-    // 3. Everything else sorted case-insensitively, ignoring leading dots for sort order
-    display_entries.sort_by(|a, b| {
-        match (a.as_str(), b.as_str()) {
-            (".", _) => std::cmp::Ordering::Less,
-            (_, ".") => std::cmp::Ordering::Greater,
-            ("..", _) if b != "." => std::cmp::Ordering::Less,
-            (_, "..") if a != "." => std::cmp::Ordering::Greater,
-            _ => {
-                // For other files, sort by name ignoring leading dots and case
-                let key_a = a.trim_start_matches('.').to_lowercase();
-                let key_b = b.trim_start_matches('.').to_lowercase();
-                key_a.cmp(&key_b)
-            }
+    // Sort like before
+    display_entries.sort_by(|a, b| match (a.as_str(), b.as_str()) {
+        (".", _) => std::cmp::Ordering::Less,
+        (_, ".") => std::cmp::Ordering::Greater,
+        ("..", _) if b != "." => std::cmp::Ordering::Less,
+        (_, "..") if a != "." => std::cmp::Ordering::Greater,
+        _ => {
+            let key_a = a.trim_start_matches('.').to_lowercase();
+            let key_b = b.trim_start_matches('.').to_lowercase();
+            key_a.cmp(&key_b)
         }
     });
 
-    // Print all entries
-    let mut first = true;
-    for entry in display_entries {
-        if !first {
-            print!("   ");
-        }
-        print!("{}", entry);
-        first = false;
-    }
+    // --- NEW: column layout ---
+    let term_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(80);
 
-    if !first {
-        println!(); // Add final newline only if we printed something
+    // Find longest entry
+    let max_len = display_entries.iter().map(|s| s.len()).max().unwrap_or(1);
+    let col_width = max_len + 2; // add spacing
+    let cols = std::cmp::max(1, term_width / col_width);
+    let rows = (display_entries.len() + cols - 1) / cols;
+
+    for row in 0..rows {
+        for col in 0..cols {
+            let idx = col * rows + row;
+            if idx < display_entries.len() {
+                let name = &display_entries[idx];
+                print!("{:<width$}", name, width = col_width);
+            }
+        }
+        println!();
     }
 
     Ok(())
