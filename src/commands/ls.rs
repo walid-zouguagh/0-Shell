@@ -29,6 +29,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
     }
 
+    // when you run ls without giving it any paths.
     if paths.is_empty() {
         paths.push(
             env::current_dir()
@@ -70,8 +71,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 let file_name = path
                     .file_name()
                     .unwrap_or_else(|| std::ffi::OsStr::new(""))
-                    .to_string_lossy()
-                    .to_string();
+                    .to_string_lossy() // Cow<str>
+                    .to_string(); // String
                 print_long_entry(&metadata, &file_name, append_types)?;
             } else {
                 let mut file_name = path.display().to_string();
@@ -172,11 +173,9 @@ fn print_long_format(
             total_blocks += meta.blocks();
             display_entries.push((meta, ".".to_string()));
         }
-        if let Some(parent) = path.parent() {
-            if let Ok(meta) = fs::metadata(parent) {
-                total_blocks += meta.blocks();
-                display_entries.push((meta, "..".to_string()));
-            }
+        if let Ok(meta) = fs::symlink_metadata(path.join("..")) {
+            total_blocks += meta.blocks();
+            display_entries.push((meta, "..".to_string()));
         }
     }
 
@@ -313,6 +312,15 @@ fn is_executable(entry: &fs::DirEntry) -> Result<bool, String> {
         .map_err(|e| format!("Error getting metadata: {}", e))?;
 
     Ok(metadata.permissions().mode() & 0o111 != 0)
+
+    // In short:
+    // metadata.permissions().mode() & 0o111 != 0 : checks if a file is executable by anyone.
+
+    // metadata.permissions().mode() - Gets the file's permission bits
+    // & 0o111 - Isolates only the 3 execute bits (owner, group, others)
+    // != 0 - Returns true if ANY execute bit is set, false if none
+
+    // Purpose: Used by ls -F to decide whether to add an asterisk (*) to executable files.
 }
 
 // Convert mode bits into string like `-rw-r--r--` or `drwxr-xr-x`
@@ -361,6 +369,7 @@ fn get_owner(uid: u32) -> Result<String, String> {
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     if let Some(name) = output_str.split(':').next() {
+        // forexample Input: "walid:x:1000:1000:Walid:/home/walid:/bin/bash" => split(':').next() → "walid".
         Ok(name.to_string())
     } else {
         Ok(uid.to_string())
