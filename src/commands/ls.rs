@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use chrono::{DateTime, Local};
 use libc::{major, minor};
 use std::env;
@@ -70,13 +71,24 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
         } else {
             // File or symlink (including /bin -> usr/bin)
+            // if long_format {
+            //     let file_name = path
+            //         .file_name()
+            //         .unwrap_or_else(|| std::ffi::OsStr::new(""))
+            //         .to_string_lossy()
+            //         .to_string();
+            //     print_long_entry(&meta, &file_name, append_types, None)?;
+            // } else {
+            //     let mut file_name = path.display().to_string();
+            //     if append_types {
+            //         file_name = append_type_suffix_for_path(&path, file_name)?;
+            //     }
+            //     println!("{}", file_name);
+            // }
+
             if long_format {
-                let file_name = path
-                    .file_name()
-                    .unwrap_or_else(|| std::ffi::OsStr::new(""))
-                    .to_string_lossy()
-                    .to_string();
-                print_long_entry(&meta, &file_name, append_types, None)?;
+                let file_name = path.display().to_string(); // full path (/bin)
+                print_long_entry(&meta, &file_name, append_types, Some(&path))?;
             } else {
                 let mut file_name = path.display().to_string();
                 if append_types {
@@ -233,11 +245,57 @@ fn print_long_format(
 }
 
 // Modified print_long_entry function - pass the directory path
+// fn print_long_entry(
+//     metadata: &fs::Metadata,
+//     file_name: &str,
+//     append_types: bool,
+//     base_path: Option<&std::path::Path>,
+// ) -> Result<(), String> {
+//     use std::os::unix::fs::MetadataExt;
+
+//     let ftype = file_type_char(metadata.mode());
+//     let perms = format_mode(metadata.mode());
+//     let links = metadata.nlink();
+//     let owner = get_owner(metadata.uid()).unwrap_or_else(|_| String::from("unknown"));
+//     let group = get_group(metadata.gid()).unwrap_or_else(|_| String::from("unknown"));
+
+//     let mtime = metadata.modified().unwrap_or(SystemTime::now());
+//     let datetime: DateTime<Local> = mtime.into();
+//     let mtime_str = datetime.format("%b %e %H:%M").to_string();
+
+//     // Handle device files
+//     let file_type = metadata.mode() & libc::S_IFMT;
+//     let size_or_dev = if file_type == libc::S_IFCHR || file_type == libc::S_IFBLK {
+//         let rdev = metadata.rdev();
+//         format!("{}, {}", major(rdev), minor(rdev))
+//     } else {
+//         format!("{}", metadata.size())
+//     };
+
+//     let mut display_name = file_name.to_string();
+//     if append_types {
+//         let full_path = if let Some(base) = base_path {
+//             base.join(file_name)
+//         } else {
+//             std::path::PathBuf::from(file_name)
+//         };
+//         display_name = append_type_suffix_for_path(&full_path, display_name)?;
+//     }
+
+//     println!(
+//         "{}{} {:>3} {:>8} {:>8} {:>8} {} {}",
+//         ftype, perms, links, owner, group, size_or_dev, mtime_str, display_name
+//     );
+
+//     Ok(())
+// }
+
+// Modified print_long_entry function - uses base path + file_name to build full path
 fn print_long_entry(
     metadata: &fs::Metadata,
     file_name: &str,
     append_types: bool,
-    base_path: Option<&std::path::Path>,
+    full_path: Option<&std::path::Path>, // full path instead of just dir
 ) -> Result<(), String> {
     use std::os::unix::fs::MetadataExt;
 
@@ -249,7 +307,15 @@ fn print_long_entry(
 
     let mtime = metadata.modified().unwrap_or(SystemTime::now());
     let datetime: DateTime<Local> = mtime.into();
-    let mtime_str = datetime.format("%b %e %H:%M").to_string();
+
+    let current_year = Local::now().year();
+    let mtime_year = datetime.year();
+
+    let mtime_str = if mtime_year == current_year {
+        datetime.format("%b %e %H:%M").to_string()
+    } else {
+        datetime.format("%b %e  %Y").to_string()
+    };
 
     // Handle device files
     let file_type = metadata.mode() & libc::S_IFMT;
@@ -260,23 +326,65 @@ fn print_long_entry(
         format!("{}", metadata.size())
     };
 
+    // Use the given file_name as display name (`/bin`, `ls`, etc.)
     let mut display_name = file_name.to_string();
+
     if append_types {
-        let full_path = if let Some(base) = base_path {
-            base.join(file_name)
-        } else {
-            std::path::PathBuf::from(file_name)
-        };
-        display_name = append_type_suffix_for_path(&full_path, display_name)?;
+        if let Some(path) = full_path {
+            display_name = append_type_suffix_for_path(path, display_name)?;
+        }
     }
 
-    println!(
+    // Print the main entry
+    print!(
         "{}{} {:>3} {:>8} {:>8} {:>8} {} {}",
         ftype, perms, links, owner, group, size_or_dev, mtime_str, display_name
     );
 
+    // If it's a symlink, append `-> target`
+    if ftype == 'l' {
+        if let Some(path) = full_path {
+            if let Ok(target) = fs::read_link(path) {
+                print!(" -> {}", target.display());
+            }
+        }
+    }
+
+    println!();
     Ok(())
 }
+
+// Improved find_symlink function (no debug noise, safe handling)
+// pub fn find_symlink(path: &std::path::Path) -> Option<String> {
+//     match fs::read_link(path) {
+//         Ok(link) => Some(link.display().to_string()),
+//         Err(_) => None,
+//     }
+// }
+
+// Append special characters to file names based on their type (for `-F`)
+// fn append_type_suffix(entry: &fs::DirEntry, file_name: String) -> Result<String, String> {
+//     let file_type = entry
+//         .file_type()
+//         .map_err(|e| format!("Error getting file type: {}", e))?;
+
+//     let mut file_name_str = file_name;
+
+//     // Append type-specific suffixes based on file type
+//     if file_type.is_dir() {
+//         file_name_str.push('/');
+//     } else if file_type.is_symlink() {
+//         file_name_str.push('@');
+//     } else if file_type.is_fifo() {
+//         file_name_str.push('|');
+//     } else if file_type.is_socket() {
+//         file_name_str.push('=');
+//     } else if file_type.is_file() && is_executable(entry)? {
+//         file_name_str.push('*');
+//     }
+
+//     Ok(file_name_str)
+// }
 
 // Append special characters to file names based on their type (for `-F`)
 fn append_type_suffix(entry: &fs::DirEntry, file_name: String) -> Result<String, String> {
@@ -286,7 +394,6 @@ fn append_type_suffix(entry: &fs::DirEntry, file_name: String) -> Result<String,
 
     let mut file_name_str = file_name;
 
-    // Append type-specific suffixes based on file type
     if file_type.is_dir() {
         file_name_str.push('/');
     } else if file_type.is_symlink() {
@@ -301,6 +408,37 @@ fn append_type_suffix(entry: &fs::DirEntry, file_name: String) -> Result<String,
 
     Ok(file_name_str)
 }
+
+// Append type suffix for a path (used when path is a file, not from DirEntry)
+// fn append_type_suffix_for_path(
+//     path: &std::path::Path,
+//     file_name: String,
+// ) -> Result<String, String> {
+//     // Use symlink_metadata to avoid following symlinks
+//     let metadata = match fs::symlink_metadata(path) {
+//         Ok(meta) => meta,
+//         Err(_) => {
+//             // If we can't get metadata, return the original filename without modification
+//             return Ok(file_name);
+//         }
+//     };
+
+//     let mut file_name_str = file_name;
+
+//     if metadata.is_dir() {
+//         file_name_str.push('/');
+//     } else if metadata.file_type().is_symlink() {
+//         file_name_str.push('@');
+//     } else if metadata.file_type().is_fifo() {
+//         file_name_str.push('|');
+//     } else if metadata.file_type().is_socket() {
+//         file_name_str.push('=');
+//     } else if metadata.is_file() && metadata.permissions().mode() & 0o111 != 0 {
+//         file_name_str.push('*');
+//     }
+
+//     Ok(file_name_str)
+// }
 
 // Append type suffix for a path (used when path is a file, not from DirEntry)
 fn append_type_suffix_for_path(
@@ -424,3 +562,22 @@ fn file_type_char(mode: u32) -> char {
         _ => '?',              // unknown
     }
 }
+
+// pub fn find_symlink(path: &std::path::Path) -> String {
+//     if let Ok(link) = fs::read_link(path) {
+//         link.display().to_string()
+//     } else {
+//         String::new()
+//     }
+// }
+
+// pub fn find_symlink(path: &std::path::Path) -> String {
+//     println!("\nDEBUG: Reading symlink from path: {}", path.display());
+//     if let Ok(link) = fs::read_link(path) {
+//         println!("\nDEBUG: Symlink found: {:?} -> {:?}", path, link);
+//         return link.display().to_string();
+//     } else {
+//         println!("\nDEBUG: Failed to read symlink from: {}", path.display());
+//         return String::new();
+//     }
+// }
