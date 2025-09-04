@@ -8,6 +8,33 @@ pub fn cp(args: &[String]) -> Result<(), String> {
     // if paths.len() < 2 {
     //     return Err("cp: missing destination file operand".into());
     // }
+    if args.len() == 2 {
+        let (from, to) = (Path::new(&args[0]), Path::new(&args[1]));
+        let target = if to.is_dir() {
+            // if its a dirictory we willl copy the file inside it with the same name
+            if let Some(file_name) = from.file_name() {
+                to.join(file_name)
+            } else {
+                //  here if the source path is not a valid file name (like if its a directory or empty)
+                println!(
+                    "cp: invalid source file '{}'",
+                    from.to_string_lossy().to_string()
+                );
+                return Ok(());
+            }
+        } else {
+            to.to_path_buf()
+        };
+        if let Err(e) = fs::copy(&from, &target) {
+            println!(
+                "cp: failed to copy file '{}': {}",
+                from.to_string_lossy().to_string(),
+                e
+            );
+        }
+
+        return Ok(());
+    }
 
     let binding = "".to_string();
     let dest = Path::new(args.last().unwrap_or(&binding));
@@ -31,25 +58,24 @@ pub fn cp(args: &[String]) -> Result<(), String> {
             if let Some(file_name) = src_path.file_name() {
                 dest.join(file_name)
             } else {
-    //  here if the source path is not a valid file name (like if its a directory or empty)
+                //  here if the source path is not a valid file name (like if its a directory or empty)
                 println!("cp: invalid source file '{}'", src);
                 continue;
             }
         } else {
-    // here in case itss a file we gonna overwrite it with the source file, 
+            // here in case itss a file we gonna overwrite it with the source file,
 
             // let target = if dest.is_dir() {
             //     dest.join(src_path.file_name().unwrap()
-        // to_path_buf() // convert the Path to a PathBuf so we can use it in fs::copy
-        // the perpese 
+            // to_path_buf() // convert the Path to a PathBuf so we can use it in fs::copy
+            // the perpese
             dest.to_path_buf()
         };
-    //  here we'ree sure that the scr is a file and the destination is valid so we can copy it, 
+        //  here we'ree sure that the scr is a file and the destination is valid so we can copy it,
         if let Err(e) = fs::copy(&src_path, &target) {
             println!("cp: failed to copy file '{}': {}", src, e);
         }
         // and of coursee we should handle any type of tmajninat that might occur fee had l lprocess w naprintiwha bla panic
-
     }
 
     Ok(())
