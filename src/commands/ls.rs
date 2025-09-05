@@ -17,7 +17,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut paths = Vec::new();
 
     for arg in args {
-        if arg.starts_with('-') {
+        if arg == "-" {
+            // Special case: "-" is not an option, it's a filename
+            paths.push(arg.clone());
+        } else if arg.starts_with('-') {
             for ch in arg.chars().skip(1) {
                 match ch {
                     'a' => show_all = true,
@@ -42,7 +45,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
 
     for path_str in paths {
-        let path = std::path::PathBuf::from(&path_str);
+        // let path = std::path::PathBuf::from(&path_str);
+        let path = expand_path(&path_str);
 
         // Check if the path exists
         if !path.exists() {
@@ -130,7 +134,7 @@ fn print_short_format(
             file_name_str.into_owned()
         };
 
-        display_entries.push(file_name_str);
+        display_entries.push(quote_filename(&file_name_str));
     }
 
     // Sort like before
@@ -165,7 +169,6 @@ fn print_short_format(
         }
         println!();
     }
-
     Ok(())
 }
 
@@ -206,13 +209,16 @@ fn print_long_format(
 
         total_blocks += metadata.blocks();
 
-        let file_name_str = if append_types {
-            append_type_suffix(entry, file_name_str.to_string())?
-        } else {
-            file_name_str.into_owned()
-        };
+        // let file_name_str = if append_types {
+        //     append_type_suffix(entry, file_name_str.to_string())?
+        // } else {
+        //     file_name_str.into_owned()
+        // };
 
-        display_entries.push((metadata, file_name_str));
+        // display_entries.push((metadata, file_name_str));
+
+        let raw_name = file_name_str.into_owned();
+        display_entries.push((metadata, raw_name));
     }
 
     // Sort entries using the same logic as short format
@@ -235,23 +241,31 @@ fn print_long_format(
     // Print detailed info for all entries
     for (metadata, file_name) in display_entries {
         // Pass the directory path so we can construct correct full paths
-        print_long_entry(&metadata, &file_name, append_types, Some(path))?;
+        // print_long_entry(&metadata, &file_name, append_types, Some(path))?;
+
+        let full_path = path.join(&file_name);
+        print_long_entry(&metadata, &file_name, append_types, Some(&full_path))?;
     }
 
     Ok(())
 }
 
-// Modified print_long_entry function - uses base path + file_name to build full path
+// Print a single file entry in long format (like `ls -l`), with permissions, ownership, size, time, and symlink target.
 fn print_long_entry(
     metadata: &fs::Metadata,
     file_name: &str,
-    _append_types: bool,
-    full_path: Option<&std::path::Path>, // full path instead of just dir
+    append_types: bool,
+    full_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
     use std::os::unix::fs::MetadataExt;
 
     let ftype = file_type_char(metadata.mode());
-    let perms = format_mode(metadata.mode());
+    // let perms = format_mode(metadata.mode());
+    let perms = format_mode(
+        metadata.mode(),
+        full_path.unwrap_or(std::path::Path::new(file_name)),
+    );
+
     let links = metadata.nlink();
     let owner = get_owner(metadata.uid()).unwrap_or_else(|_| String::from("unknown"));
     let group = get_group(metadata.gid()).unwrap_or_else(|_| String::from("unknown"));
@@ -268,7 +282,6 @@ fn print_long_entry(
         datetime.format("%b %e  %Y").to_string()
     };
 
-    // Handle device files
     let file_type = metadata.mode() & libc::S_IFMT;
     let size_or_dev = if file_type == libc::S_IFCHR || file_type == libc::S_IFBLK {
         let rdev = metadata.rdev();
@@ -277,26 +290,43 @@ fn print_long_entry(
         format!("{}", metadata.size())
     };
 
-    // Use the given file_name as display name (`/bin`, `ls`, etc.)
-    let display_name = file_name.to_string();
+    // let mut display_name = file_name.to_string();
+    let mut display_name = quote_filename(file_name);
 
-    // if append_types {
-    //     if let Some(path) = full_path {
-    //         display_name = append_type_suffix_for_path(path, display_name)?;
-    //     }
-    // }
+    if append_types {
+        if let Some(path) = full_path {
+            display_name = append_type_suffix_for_path(path, display_name)?;
+        }
+    }
 
-    // Print the main entry
     print!(
         "{}{} {:>3} {:>8} {:>8} {:>8} {} {}",
         ftype, perms, links, owner, group, size_or_dev, mtime_str, display_name
     );
 
-    // If it's a symlink, append `-> target`
+    // --- FIX: follow symlink and append suffix based on target ---
     if ftype == 'l' {
         if let Some(path) = full_path {
             if let Ok(target) = fs::read_link(path) {
-                print!(" -> {}", target.display());
+                let mut target_str = target.display().to_string();
+
+                if append_types {
+                    if let Ok(target_meta) = fs::metadata(path) {
+                        if target_meta.is_dir() {
+                            target_str.push('/');
+                        } else if target_meta.file_type().is_socket() {
+                            target_str.push('=');
+                        } else if target_meta.file_type().is_fifo() {
+                            target_str.push('|');
+                        } else if target_meta.is_file()
+                            && target_meta.permissions().mode() & 0o111 != 0
+                        {
+                            target_str.push('*');
+                        }
+                    }
+                }
+
+                print!(" -> {}", target_str);
             }
         }
     }
@@ -346,8 +376,6 @@ fn append_type_suffix_for_path(
 
     if metadata.is_dir() {
         file_name_str.push('/');
-    } else if metadata.file_type().is_symlink() {
-        file_name_str.push('@');
     } else if metadata.file_type().is_fifo() {
         file_name_str.push('|');
     } else if metadata.file_type().is_socket() {
@@ -355,6 +383,9 @@ fn append_type_suffix_for_path(
     } else if metadata.is_file() && metadata.permissions().mode() & 0o111 != 0 {
         file_name_str.push('*');
     }
+    // else if metadata.file_type().is_symlink() {
+    //     file_name_str.push('@');
+    // }
 
     Ok(file_name_str)
 }
@@ -368,7 +399,7 @@ fn is_executable(entry: &fs::DirEntry) -> Result<bool, String> {
     Ok(metadata.permissions().mode() & 0o111 != 0)
 }
 
-fn format_mode(mode: u32) -> String {
+fn format_mode(mode: u32, path: &std::path::Path) -> String {
     let mut perms = String::new();
 
     // user permissions
@@ -421,6 +452,13 @@ fn format_mode(mode: u32) -> String {
             '-'
         }
     });
+
+    // 🔹 check for extended attributes
+    if let Ok(mut attrs) = xattr::list(path) {
+        if attrs.next().is_some() {
+            perms.push('+');
+        }
+    }
 
     perms
 }
@@ -480,4 +518,33 @@ fn file_type_char(mode: u32) -> char {
         libc::S_IFREG => '-',  // regular file
         _ => '?',              // unknown
     }
+}
+
+fn quote_filename(name: &str) -> String {
+    // Characters that need quoting (shell metacharacters + whitespace)
+    let special_chars = [
+        ' ', '\t', '\n', '\'', '"', '\\', '[', ']', '{', '}', '(', ')', '*', '?', '~', '!', '$',
+        '&', ';', '|', '<', '>', '`',
+    ];
+
+    let needs_quotes = name.chars().any(|c| special_chars.contains(&c));
+
+    if needs_quotes {
+        format!("'{}'", name)
+    } else {
+        name.to_string()
+    }
+}
+
+fn expand_path(path: &str) -> std::path::PathBuf {
+    if path == "~" || path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            if path == "~" {
+                return home;
+            } else {
+                return home.join(&path[2..]);
+            }
+        }
+    }
+    std::path::PathBuf::from(path)
 }
