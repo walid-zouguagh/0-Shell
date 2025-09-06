@@ -257,7 +257,7 @@ fn print_long_entry(
     append_types: bool,
     full_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
-    use std::os::unix::fs::MetadataExt;
+    // use std::os::unix::fs::MetadataExt;
 
     let ftype = file_type_char(metadata.mode());
     // let perms = format_mode(metadata.mode());

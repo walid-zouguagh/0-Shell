@@ -1,4 +1,5 @@
-use std::io::{ self, Write };
+use std::io::{self, Write};
+
 pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     let mut args = Vec::new();
     let mut current = String::new();
@@ -6,10 +7,13 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     let mut in_double_quotes = false;
     let mut escaped = false;
     let mut input = initial_input.trim().to_string();
+
     while !is_command_complete(&input) {
         print!("> "); // continuation prompt
-        io::stdout().flush().unwrap();
-        
+        if let Err(e) = io::stdout().flush() {
+            eprintln!("{}", e);
+        }
+
         let mut extra = String::new();
         if io::stdin().read_line(&mut extra).unwrap() == 0 {
             break; // EOF
@@ -17,119 +21,89 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
         input.push('\n');
         input.push_str(extra.trim_end());
     }
-    
+
     let mut chars = input.chars().peekable();
 
     while let Some(ch) = chars.next() {
         if escaped {
-            current.push(ch);
+            if in_double_quotes || in_single_quotes {
+                match ch {
+                    'n' => current.push('\n'),
+                    't' => current.push('\t'),
+                    'r' => current.push('\r'),
+                    '\\' => current.push('\\'),
+                    '\'' => current.push('\''),
+                    '"' => current.push('"'),
+                    _ => {
+                        current.push('\\');
+                        current.push(ch);
+                    }
+                }
+            } else {
+                
+                current.push('\\');
+                current.push(ch);
+            }
             escaped = false;
             continue;
         }
 
         match ch {
-            '~' => {
-                if current.is_empty() {
-                    if let Ok(home) = std::env::var("HOME") {
-                        current.push_str(&home);
-                        // continue;
-                    }else {
-                        current.push('~');
-                    }
+            '\\' => {
+               
+                if in_double_quotes || in_single_quotes {
+                    escaped = true;
+                } else {
+                    current.push('\\');
                 }
             }
-            ' ' | '\t' if !in_single_quotes && !in_double_quotes  => {
-                // in this we
+            '~' => {
+                if current.is_empty() && !in_single_quotes && !in_double_quotes {
+                    if let Ok(home) = std::env::var("HOME") {
+                        current.push_str(&home);
+                    } else {
+                        current.push('~');
+                    }
+                } else {
+                    current.push('~');
+                }
+            }
+            ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
                 if !current.is_empty() {
                     args.push(current.clone());
                     current.clear();
                 }
-             
             }
-            // in case the arg starts with a # and is not in quotes we egnore the rest of the line
             '#' if !in_single_quotes && !in_double_quotes && current.is_empty() => {
                 break;
             }
-            // in case of a double quote we should check if we are not in single quotes then change the state of in_double_quotes
-            '"' if !in_single_quotes => {in_double_quotes = !in_double_quotes}
-            // here we do the same for single quotes
-            '\'' if !in_double_quotes => {in_single_quotes = !in_single_quotes;}
-            // in case of a backslash we set the escaped flag to true so that the next char is added as it is
-            '\\' => {
-                if !in_single_quotes {
-                    // Inside single quotes: literal backslash
-                    // current.push('\\');
-                    // println!("here1111111111111111111");
-                    continue;
-                } else {
-                    // println!("here2222222222222222222");
-
-                    // In double quotes or unquoted: check next char for escape
-                        // escaped = true; 
-
-                    if let Some(&next_ch) = chars.peek() {
-                        match next_ch {
-                            'n' => {
-                                chars.next();
-                                current.push('\n');
-                            }
-                            't' => {
-                                chars.next();
-                                current.push('\t');
-                            }
-                            'r' => {
-                                chars.next();
-                                current.push('\r');
-                            }
-                            '\\' => {
-                                chars.next();
-                                current.push('\\');
-                            }
-                            '"' if in_double_quotes => {chars.next();current.push('"');} 
-                            '\'' if !in_double_quotes => {chars.next();current.push('\''); }
-                            // ' ' 
-                            _ => { current.push('\\'); continue;
-                                //  No special escape, just add the backslash and the next char normally
-                                 
-                                // escaped =  true;
-                               
-                            }
-                        }
-                    } else {
-                        // println!("here33333333333333333");
-                        // Backslash at the end: treat as literal
-                        current.push('\\');
-                    }
-                }
+            '"' if !in_single_quotes => {
+                in_double_quotes = !in_double_quotes;
             }
-        
-            // the default state is to push the character to l arrg
+            '\'' if !in_double_quotes => {
+                in_single_quotes = !in_single_quotes;
+            }
             _ => {
                 current.push(ch);
-                // chars.next();
             }
         }
     }
- 
-    // in this case  the last char is a backslash we should add it to the current arg
-    // if escaped {
-    //     println!("here44444444444444444");
-    //     current.push('\\');
-    // }
+
+    if escaped {
+        current.push('\\');
+    }
 
     if !current.is_empty() {
         args.push(current);
     }
-    // in case of empty input....
+
     if args.is_empty() {
         return ("".to_string(), vec![]);
     }
 
-    // here we remove the first element of the args and return it as the command
     let cmd = args.remove(0);
     (cmd, args)
 }
-
 
 fn is_command_complete(input: &str) -> bool {
     let mut in_single_quotes = false;
@@ -149,7 +123,5 @@ fn is_command_complete(input: &str) -> bool {
         }
     }
 
-    !in_single_quotes && !in_double_quotes && !input.trim_end().ends_with('\\')
+    !in_single_quotes && !in_double_quotes && !escaped
 }
-
- 
