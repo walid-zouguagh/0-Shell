@@ -520,6 +520,22 @@ fn file_type_char(mode: u32) -> char {
     }
 }
 
+// fn quote_filename(name: &str) -> String {
+//     // Characters that need quoting (shell metacharacters + whitespace)
+//     let special_chars = [
+//         ' ', '\t', '\n', '\'', '"', '\\', '[', ']', '{', '}', '(', ')', '*', '?', '~', '!', '$',
+//         '&', ';', '|', '<', '>', '`',
+//     ];
+
+//     let needs_quotes = name.chars().any(|c| special_chars.contains(&c));
+
+//     if needs_quotes {
+//         format!("'{}'", name)
+//     } else {
+//         name.to_string()
+//     }
+// }
+
 fn quote_filename(name: &str) -> String {
     // Characters that need quoting (shell metacharacters + whitespace)
     let special_chars = [
@@ -529,10 +545,55 @@ fn quote_filename(name: &str) -> String {
 
     let needs_quotes = name.chars().any(|c| special_chars.contains(&c));
 
-    if needs_quotes {
-        format!("'{}'", name)
+    if !needs_quotes {
+        return name.to_string();
+    }
+
+    let mut out = String::new();
+    let mut normal_buf = String::new();
+    let mut first_escape = true;
+
+    let flush_normal = |buf: &mut String, out: &mut String| {
+        if !buf.is_empty() {
+            out.push('\'');
+            out.push_str(buf);
+            out.push('\'');
+            buf.clear();
+        }
+    };
+
+    for c in name.chars() {
+        match c {
+            '\n' => {
+                flush_normal(&mut normal_buf, &mut out);
+                if first_escape && out.is_empty() {
+                    out.push_str("''");
+                }
+                out.push_str("$'\\n'");
+                first_escape = false;
+            }
+            '\t' => {
+                flush_normal(&mut normal_buf, &mut out);
+                if first_escape && out.is_empty() {
+                    out.push_str("''");
+                }
+                out.push_str("$'\\t'");
+                first_escape = false;
+            }
+            '\'' => {
+                flush_normal(&mut normal_buf, &mut out);
+                out.push_str("\"'\"");
+            }
+            _ => normal_buf.push(c),
+        }
+    }
+
+    flush_normal(&mut normal_buf, &mut out);
+
+    if out.is_empty() {
+        "''".to_string()
     } else {
-        name.to_string()
+        out
     }
 }
 

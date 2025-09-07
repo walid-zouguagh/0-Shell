@@ -6,13 +6,14 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     let mut in_double_quotes = false;
     let mut escaped = false;
     let mut input = initial_input.trim().to_string();
+    // if hadak l inut didn't passe the function is_command_complet we gonna keep listening for the input !!!
     while !is_command_complete(&input) {
-        print!("> "); // continuation prompt
-        io::stdout().flush().unwrap();
-        
+        print!("> "); 
+        io::stdout().flush().unwrap_or(());
+        println!(" the problem is heeeer 09... ");
         let mut extra = String::new();
-        if io::stdin().read_line(&mut extra).unwrap() == 0 {
-            break; // EOF
+        if io::stdin().read_line(&mut extra).unwrap_or(0) == 0 {
+            break; 
         }
         input.push('\n');
         input.push_str(extra.trim_end());
@@ -69,34 +70,23 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
 
                     if let Some(&next_ch) = chars.peek() {
                         match next_ch {
-                            'n' => {
-                                chars.next();
-                                current.push('\n');
-                            }
-                            't' => {
-                                chars.next();
-                                current.push('\t');
-                            }
-                            'r' => {
-                                chars.next();
-                                current.push('\r');
-                            }
-                            '\\' => {
-                                chars.next();
-                                current.push('\\');
-                            }
+                            'n' => {chars.next();current.push('\n');}
+                            't' => {chars.next();current.push('\t');}
+                            'r' => {chars.next();current.push('\r');}
+                            // '\\' => { chars.next();current.push('\\');}
                             '"' if in_double_quotes => {chars.next();current.push('"');} 
                             '\'' if !in_double_quotes => {chars.next();current.push('\''); }
                             // ' ' 
-                            _ => { current.push('\\'); continue;
-                                //  No special escape, just add the backslash and the next char normally
-                                 
-                                // escaped =  true;
-                               
+                            _ => { current.push('\\'); 
+                            //  No special escape, just add the backslash and the next char normally
+                            
+                            escaped =  true;
+                            
+                            continue;
                             }
                         }
                     } else {
-                        // println!("here33333333333333333");
+                        println!("here33333333333333333");
                         // Backslash at the end: treat as literal
                         current.push('\\');
                     }

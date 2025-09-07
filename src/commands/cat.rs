@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, stdin, stdout, BufReader, Read};
+use std::io::{ self, stdin, stdout, BufReader, Read };
 use std::path::Path;
 pub fn cat(args: &[String]) -> Result<(), String> {
     //  in case no args were provided with the cmd cat we just read from stdin
@@ -31,6 +31,9 @@ pub fn cat(args: &[String]) -> Result<(), String> {
             let _ = io::copy(&mut stdin(), &mut stdout());
 
             // return Ok(());
+        } else if filename == "--" {
+                 println!("cat: {}: Not valid flag", filename);
+                 continue;
         } else {
             // we gonna use Path from std::path since we dont neeed to change the path or manipulate it
             let path = Path::new(filename);
