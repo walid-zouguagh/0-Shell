@@ -6,6 +6,7 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     let mut in_double_quotes = false;
     let mut escaped = false;
     let mut input = initial_input.trim().to_string();
+    
     // if hadak l inut didn't passe the function is_command_complet we gonna keep listening for the input !!!
     while !is_command_complete(&input) {
         print!("> ");

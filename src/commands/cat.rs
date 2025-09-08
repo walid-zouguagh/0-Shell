@@ -19,7 +19,7 @@ pub fn cat(args: &[String]) -> Result<(), String> {
     }
 
     for filename in args {
-        if filename == "-" {
+        if filename == "-" || filename == "--" {
             // let stdin = io::stdin();
             // let reader = stdin.lock();
             // for line in reader.lines() {
@@ -31,9 +31,6 @@ pub fn cat(args: &[String]) -> Result<(), String> {
             let _ = io::copy(&mut stdin(), &mut stdout());
 
             // return Ok(());
-        } else if filename == "--" {
-                 println!("cat: {}: Not valid flag", filename);
-                 continue;
         } else {
             // we gonna use Path from std::path since we dont neeed to change the path or manipulate it
             let path = Path::new(filename);
