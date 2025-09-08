@@ -19,8 +19,13 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
         if io::stdin().read_line(&mut extra).unwrap_or(0) == 0 {
             break;
         }
-        input.push('\n');
-        input.push_str(extra.trim_end());
+          while input.ends_with('\\') {
+        input.pop();
+    }
+
+    input.push('\\');
+    input.push(' ');
+    input.push_str(extra.trim());
     }
 
     let mut chars = input.chars().peekable();
