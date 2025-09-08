@@ -2,11 +2,23 @@ use std::env;
 
 pub fn run(args: &[String]) -> Result<(), String> {
     //    for arg in args
+
+    if args.len() > 1 {
+        return Err("cd: too many arguments one is enogh".to_string());
+    }
+
     let curent_path = env::current_dir().unwrap_or("/".into()).to_string_lossy().to_string();
 
     let target = if args.is_empty() || args[0] == "--" {
         env::var("HOME").unwrap_or_else(|_| "/".to_string())
-    } else if args[0] == "-"{
+    } else if args[0].starts_with("~") {
+        let home = env::var("HOME").unwrap_or_else(|_| "/".to_string());
+        if args[0] == "~" {
+            home 
+        } else {
+            format!("{}{}", home, &args[0][1..])
+        }
+    } else if args[0] == "-" {
         match env::var("OLDPWD") {
             Ok(old) => {
                 println!("{}", old);
