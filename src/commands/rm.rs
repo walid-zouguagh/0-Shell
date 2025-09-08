@@ -19,7 +19,7 @@ pub fn rm(args: &[String]) -> Result<(), String> {
     if targets.is_empty(){
         return Err("rm: missing operand".into());
     }
-    for target in args {
+    for target in &targets {
      
         let path = Path::new(target);
         if !path.exists() {

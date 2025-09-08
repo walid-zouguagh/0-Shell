@@ -6,7 +6,7 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     let mut in_double_quotes = false;
     let mut escaped = false;
     let mut input = initial_input.trim().to_string();
-    
+
     // if hadak l inut didn't passe the function is_command_complet we gonna keep listening for the input !!!
     while !is_command_complete(&input) {
         print!("> ");
@@ -64,23 +64,6 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
             }
             // in case of a backslash we set the escaped flag to true so that the next char is added as it is
             '\\' => {
-                // let mut count = 1;
-                // while let Some(&'\\') = chars.peek() {
-                //     chars.next();
-                //     count +=1;
-
-                // }
-
-                // Inside single quotes: literal backslash
-                // current.push('\\');
-                // println!("here1111111111111111111");
-                //     continue;
-                // } else {
-                // println!("here2222222222222222222");
-
-                // In double quotes or unquoted: check next char for escape
-                // escaped = true;
-
                 if in_single_quotes || in_double_quotes {
                     if let Some(&next_ch) = chars.peek() {
                         match next_ch {
@@ -93,7 +76,6 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                             // ' '
                                     
                             _ => {escaped =  true;}
-                                // current.push('\\');
                             
                             //  No special escape, just add the backslash and the next char normally
                         } 
@@ -104,14 +86,7 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                     escaped = true
                 }
             }
-            // continue;
-            // }
-            // } else {
-            // println!("here33333333333333333");
-            // Backslash at the end: treat as literal
-            // }
-
-            // the default state is to push the character to l arrg
+             // the default state is to push the character to l arrg
             _ => {
                 current.push(ch);
                 // chars.next();
@@ -149,15 +124,9 @@ fn is_command_complete(input: &str) -> bool {
             continue;
         }
         match ch {
-            '\\' => {
-                escaped = true;
-            }
-            '\'' if !in_double_quotes => {
-                in_single_quotes = !in_single_quotes;
-            }
-            '"' if !in_single_quotes => {
-                in_double_quotes = !in_double_quotes;
-            }
+            '\\' => {escaped = true;}
+            '\'' if !in_double_quotes => {in_single_quotes = !in_single_quotes;}
+            '"' if !in_single_quotes => {in_double_quotes = !in_double_quotes;}
             _ => {}
         }
     }
