@@ -19,7 +19,7 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
         if io::stdin().read_line(&mut extra).unwrap_or(0) == 0 {
             break;
         }
-          while input.ends_with('\\') {
+        while input.ends_with('\\') {
         input.pop();
     }
 
