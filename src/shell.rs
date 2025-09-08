@@ -13,7 +13,8 @@ impl Shell {
 
     pub fn run(&self) -> Result<(), String> {
         let stdin = io::stdin();
-        let mut stdout = io::stdout();
+        // let mut stdout = io::stdout();
+
         loop {
             // this condition is set to insure the the curent path is valiid else if weee gonna proviide the iuser
             // with the home directory so it woont panic orr give an errooor !!
@@ -28,8 +29,12 @@ impl Shell {
                 }
             }
 
+           // Prompt
             print!("$ ");
-            let _ = stdout.flush();
+            if let Err(e) =  io::stdout().flush() {
+               eprintln!("{}",e);
+               break;
+            }
 
             let mut input = String::new();
             match stdin.read_line(&mut input) {

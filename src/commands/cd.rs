@@ -4,9 +4,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     //    for arg in args
     let curent_path = env::current_dir().unwrap_or("/".into()).to_string_lossy().to_string();
 
-    let target = if args.is_empty() {
+    let target = if args.is_empty() || args[0] == "--" {
         env::var("HOME").unwrap_or_else(|_| "/".to_string())
-    } else if args[0] == "-" {
+    } else if args[0] == "-"{
         match env::var("OLDPWD") {
             Ok(old) => {
                 println!("{}", old);

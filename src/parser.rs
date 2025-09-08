@@ -10,7 +10,10 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     // if hadak l inut didn't passe the function is_command_complet we gonna keep listening for the input !!!
     while !is_command_complete(&input) {
         print!("> ");
-        io::stdout().flush().unwrap_or(());
+        if let Err(e) = io::stdout().flush() {
+            eprintln!("{}", e);
+        }
+
         // println!(" the problem is heeeer 09... ");
         let mut extra = String::new();
         if io::stdin().read_line(&mut extra).unwrap_or(0) == 0 {
@@ -118,7 +121,7 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
 
     // in this case  the last char is a backslash we should add it to the current arg
     if escaped {
-        println!("here44444444444444444");
+        // println!("here44444444444444444");
         current.push('\\');
     }
 
