@@ -5,7 +5,8 @@ pub fn clear(_args: &[String]) -> Result<(), String> {
     }
  
     //  this code is devided into two parts
-    print!("\x1B[2J\x1B[H");
+    // print!("\x1B[3J\x1B[H\x1B[2J");
+     print!("\x1Bc");
     // \x1B is the ecape character so the next part is treated as a command
     // 2J  i use this command to clear the screen
     // H   i use this command to move the cursor to the top-left corner

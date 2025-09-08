@@ -64,9 +64,9 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                 // while let Some(&'\\') = chars.peek() {
                 //     chars.next();
                 //     count +=1;
-                    
+
                 // }
-                
+
                 // Inside single quotes: literal backslash
                 // current.push('\\');
                 // println!("here1111111111111111111");
@@ -77,26 +77,27 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
                 // In double quotes or unquoted: check next char for escape
                 // escaped = true;
 
-                if in_single_quotes || in_double_quotes  {
+                if in_single_quotes || in_double_quotes {
                     if let Some(&next_ch) = chars.peek() {
                         match next_ch {
                             'n' => {chars.next();current.push('\n');}
                             't' => {chars.next();current.push('\t');}
                             'r' => {chars.next();current.push('\r');}
-                            '\\' => { chars.next();current.push('\\');}
+                            '\\' => {chars.next();current.push('\\');}
                             '"' if in_double_quotes => {chars.next();current.push('"');}
                             '\'' if !in_double_quotes => {chars.next();current.push('\'');}
                             // ' '
-                            _ => {
-                                current.push('\\');
-                            }
+                                    
+                            _ => {escaped =  true;}
+                                // current.push('\\');
+                            
                             //  No special escape, just add the backslash and the next char normally
-                        } // escaped =  true;
+                        } 
                     } else {
                         current.push('\\');
                     }
                 } else {
-                    current.push('\\');
+                    escaped = true
                 }
             }
             // continue;
@@ -115,10 +116,10 @@ pub fn parse_command(initial_input: &str) -> (String, Vec<String>) {
     }
 
     // in this case  the last char is a backslash we should add it to the current arg
-    // if escaped {
-    //     println!("here44444444444444444");
-    //     current.push('\\');
-    // }
+    if escaped {
+        println!("here44444444444444444");
+        current.push('\\');
+    }
 
     if !current.is_empty() {
         args.push(current);
@@ -144,11 +145,29 @@ fn is_command_complete(input: &str) -> bool {
             continue;
         }
         match ch {
-            '\\' => {escaped = true;}
-            '\'' if !in_double_quotes => {in_single_quotes = !in_single_quotes;}
-            '"' if !in_single_quotes => {in_double_quotes = !in_double_quotes;}
+            '\\' => {
+                escaped = true;
+            }
+            '\'' if !in_double_quotes => {
+                in_single_quotes = !in_single_quotes;
+            }
+            '"' if !in_single_quotes => {
+                in_double_quotes = !in_double_quotes;
+            }
             _ => {}
         }
     }
-    !in_single_quotes && !in_double_quotes && !input.trim_end().ends_with('\\')
+    if in_single_quotes || in_double_quotes {
+        return false;
+    }
+    let mut backslashees = 0;
+    for ch in input.chars().rev() {
+        if ch == '\\' {
+            backslashees += 1;
+        } else {
+            break;
+        }
+    }
+    backslashees % 2 == 0
+    // !in_single_quotes && !in_double_quotes && !input.trim_end().ends_with('\\')
 }
