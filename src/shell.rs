@@ -1,8 +1,9 @@
-use std::io::{ self, Write };
-// use std::env;
+use std::env;
+use std::io::{self, Write};
+use std::path::PathBuf;
 
-use crate::parser::parse_command;
 use crate::commands;
+use crate::parser::parse_command;
 
 pub struct Shell;
 
@@ -20,20 +21,23 @@ impl Shell {
             // with the home directory so it woont panic orr give an errooor !!
             // not to be toucheeeed by anyone pleaseee !!!!
             if std::env::current_dir().is_err() {
-        
                 let backup_path = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
                 if let Err(e) = std::env::set_current_dir(&backup_path) {
                     eprintln!("Failed to recover working directory: {}", e);
-         
+
                     std::env::set_current_dir("/").ok();
                 }
             }
 
-           // Prompt
-            print!("$ ");
-            if let Err(e) =  io::stdout().flush() {
-               eprintln!("{}",e);
-               break;
+            let pwd = match env::current_dir() {
+                Ok(path) => path,
+                Err(_e) => PathBuf::new(),
+            };
+            // Prompt
+            print!("{}$ ", pwd.display());
+            if let Err(e) = io::stdout().flush() {
+                eprintln!("{}", e);
+                break;
             }
 
             let mut input = String::new();
